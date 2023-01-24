@@ -47,6 +47,7 @@ This exercise (and later in this course) uses the [MIMIC-IV data](https://mimic-
 
 - report: https://www.citiprogram.org/verify/?kb7cc392d-e76f-47c3-9815-31aac0072b44-53710475
 - certificate: https://www.citiprogram.org/verify/?w2a12994e-9c8a-4b42-8a16-8bb43b5cc7d6-53710475
+![Certificate](application.png)
 
 ## Q3. Linux Shell Commands
 
@@ -91,18 +92,30 @@ done
 ```
 
 Display the number of lines in each data file using a similar loop.
-![Q3.4.2](q3.4.2.png)
+```{bash}
+for datafile in ~/mimic/core/*.gz;
+  do wc -l < $datafile;
+done
+```
 
 
 5. Display the first few lines of `admissions.csv.gz`. How many rows are in this data file? How many unique patients (identified by `subject_id`) are in this data file? (Hint: combine Linux commands `zcat`, `head`/`tail`, `awk`, `sort`, `uniq`, `wc`, and so on.)
 
 **Answer:**
+```{bash}
+gzcat ~/mimic/core/admissions.csv.gz | head
+```
+
 ![Q3.5.1](q3.5.1.png)
 
-![Q3.5.2](q3.5.2.png)
+```{bash}
+gzcat ~/mimic/core/admissions.csv.gz | wc -l
+```
 There are 523741 rows in this datafile.
 
-![Q3.5.3](q3.5.3.png)
+```{bash}
+gzcat ~/mimic/core/admissions.csv.gz | awk 'BEGIN {FS = ","}; {print $1}' | sort | uniq |wc -l
+```
 There are 256879 unique patients in the datafile.
 
 
@@ -112,6 +125,7 @@ There are 256879 unique patients in the datafile.
 ```{bash}
 gzcat ~/mimic/core/admissions.csv.gz | awk 'BEGIN {FS=","}; {if (NR>1) {print $6}}' | sort | uniq -c
 ```
+
 ```{bash}
 gzcat ~/mimic/core/admissions.csv.gz | awk 'BEGIN {FS=","}; {if (NR>1) {print $7}}' | sort | uniq -c
 ```
@@ -272,4 +286,5 @@ echo {con,pre}{sent,fer}{s,ed}: combine each one of the 3 part and form differen
 
 - history | tail: print the recent history of the command.
 ![Q5](q5.png) 
+
 
