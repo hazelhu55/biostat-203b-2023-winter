@@ -166,9 +166,9 @@ attached base packages:
 loaded via a namespace (and not attached):
  [1] digest_0.6.31   lifecycle_1.0.3 jsonlite_1.8.4  magrittr_2.0.3 
  [5] evaluate_0.19   rlang_1.0.6     stringi_1.7.12  cli_3.6.0      
- [9] vctrs_0.5.1     rmarkdown_2.19  tools_4.2.2     stringr_1.5.0  
-[13] glue_1.6.2      xfun_0.36       yaml_2.3.6      fastmap_1.1.0  
-[17] compiler_4.2.2  htmltools_0.5.4 knitr_1.41     </code></pre>
+ [9] rstudioapi_0.14 vctrs_0.5.1     rmarkdown_2.19  tools_4.2.2    
+[13] stringr_1.5.0   glue_1.6.2      xfun_0.36       yaml_2.3.6     
+[17] fastmap_1.1.0   compiler_4.2.2  htmltools_0.5.4 knitr_1.41     </code></pre>
 </div>
 </div>
 <section id="q1.-gitgithub" class="level2" data-number="1">
@@ -286,12 +286,12 @@ drwxr-xr-x@ 11 huxuyi  staff   352 Jan 20 21:09 icu
 </div>
 <p>There are 523741 rows in this datafile.</p>
 <div class="cell" data-layout-align="center">
-<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="ex">gzcat</span> ~/mimic/core/admissions.csv.gz <span class="kw">|</span> <span class="fu">awk</span> <span class="st">'BEGIN {FS = ","}; {print $1}'</span> <span class="kw">|</span> <span class="fu">sort</span> <span class="kw">|</span> <span class="fu">uniq</span> <span class="kw">|</span><span class="fu">wc</span> <span class="at">-l</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="ex">gzcat</span> ~/mimic/core/admissions.csv.gz <span class="kw">|</span> <span class="fu">awk</span> <span class="st">'BEGIN {FS = ","}; {{if (NR&gt;1)print $1}}'</span> <span class="kw">|</span> <span class="fu">sort</span> <span class="kw">|</span> <span class="fu">uniq</span> <span class="kw">|</span><span class="fu">wc</span> <span class="at">-l</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>  256879</code></pre>
+<pre><code>  256878</code></pre>
 </div>
 </div>
-<p>There are 256879 unique patients in the datafile.</p>
+<p>There are 256878 unique patients in the datafile.</p>
 <ol start="6" type="1">
 <li>What are the possible values taken by each of the variable <code>admission_type</code>, <code>admission_location</code>, <code>insurance</code>, and <code>ethnicity</code>? Also report the count for each unique value of these variables. (Hint: combine Linux commands <code>zcat</code>, <code>head</code>/<code>tail</code>, <code>awk</code>, <code>uniq -c</code>, <code>wc</code>, and so on.)</li>
 </ol>
@@ -509,7 +509,7 @@ Su Mo Tu We Th Fr Sa
 <div class="cell" data-layout-align="center">
 <div class="sourceCode cell-code" id="cb36"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a><span class="fu">date</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>Tue Jan 24 15:35:02 PST 2023</code></pre>
+<pre><code>Tue Jan 24 16:40:11 PST 2023</code></pre>
 </div>
 </div>
 <ul>
@@ -545,7 +545,7 @@ Su Mo Tu We Th Fr Sa
 <div class="cell" data-layout-align="center">
 <div class="sourceCode cell-code" id="cb44"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb44-1"><a href="#cb44-1" aria-hidden="true" tabindex="-1"></a><span class="fu">uptime</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>15:35  up 23 mins, 1 user, load averages: 1.99 2.24 2.25</code></pre>
+<pre><code>16:40  up  1:28, 1 user, load averages: 1.81 1.82 1.81</code></pre>
 </div>
 </div>
 <ul>
@@ -554,7 +554,7 @@ Su Mo Tu We Th Fr Sa
 <div class="cell" data-layout-align="center">
 <div class="sourceCode cell-code" id="cb46"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb46-1"><a href="#cb46-1" aria-hidden="true" tabindex="-1"></a><span class="fu">who</span> am i</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>huxuyi   tty??    Jan 24 15:35 </code></pre>
+<pre><code>huxuyi   tty??    Jan 24 16:40 </code></pre>
 </div>
 </div>
 <ul>
@@ -572,9 +572,9 @@ Su Mo Tu We Th Fr Sa
 <div class="cell" data-layout-align="center">
 <div class="sourceCode cell-code" id="cb50"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb50-1"><a href="#cb50-1" aria-hidden="true" tabindex="-1"></a><span class="fu">w</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>15:35  up 23 mins, 1 user, load averages: 1.99 2.24 2.25
+<pre><code>16:40  up  1:28, 1 user, load averages: 1.81 1.82 1.81
 USER     TTY      FROM              LOGIN@  IDLE WHAT
-huxuyi   console  -                15:12      22 -</code></pre>
+huxuyi   console  -                15:12    1:28 -</code></pre>
 </div>
 </div>
 <ul>
