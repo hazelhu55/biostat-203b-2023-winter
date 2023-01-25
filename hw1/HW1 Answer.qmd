@@ -114,9 +114,9 @@ gzcat ~/mimic/core/admissions.csv.gz | wc -l
 There are 523741 rows in this datafile.
 
 ```{bash}
-gzcat ~/mimic/core/admissions.csv.gz | awk 'BEGIN {FS = ","}; {print $1}' | sort | uniq |wc -l
+gzcat ~/mimic/core/admissions.csv.gz | awk 'BEGIN {FS = ","}; {{if (NR>1)print $1}}' | sort | uniq |wc -l
 ```
-There are 256879 unique patients in the datafile.
+There are 256878 unique patients in the datafile.
 
 
 6. What are the possible values taken by each of the variable `admission_type`, `admission_location`, `insurance`, and `ethnicity`? Also report the count for each unique value of these variables. (Hint: combine Linux commands `zcat`, `head`/`tail`, `awk`, `uniq -c`, `wc`, and so on.)
