@@ -94,7 +94,7 @@ done
 Display the number of lines in each data file using a similar loop.
 ```{bash}
 for datafile in ~/mimic/core/*.gz;
-  do wc -l < $datafile;
+  do gzcat $datafile | wc -l ;
 done
 ```
 
