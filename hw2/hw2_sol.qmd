@@ -48,8 +48,9 @@ system(str_c("ls -l ", mimic_path, "/"), intern = TRUE)
 system(str_c("ls -l ", mimic_path, "/core"), intern = TRUE)
 system(str_c("ls -l ", mimic_path, "/hosp"), intern = TRUE)
 system(str_c("ls -l ", mimic_path, "/icu"), intern = TRUE)
+
 ```
----
+
 
 ## Q1. `read.csv` (base R) vs `read_csv` (tidyverse) vs `fread` (data.table)
 
@@ -59,19 +60,17 @@ Which function is fastest? Is there difference in the (default) parsed data type
 
 For later questions, we stick to the `read_csv` in tidyverse.
 
-- 'read.csv'
 
 ```{r}
 system.time(data1<-read.csv("/Users/huxuyi/mimic/core/admissions.csv.gz"))
 ```
 
 
--'read_csv'
 ```{r}
 system.time(data2<-read_csv("/Users/huxuyi/mimic/core/admissions.csv.gz"))
 ```
 
--'fread'
+
 ```{r}
 system.time(data3<-fread("/Users/huxuyi/mimic/core/admissions.csv.gz"))
 ```
@@ -85,6 +84,7 @@ str(data1)
 ```{r}
 str(data2)
 ```
+
 ```{r}
 str(data3)
 ```
@@ -137,13 +137,14 @@ ggplot(data=freq) +
 4. For each `subject_id`, let's only keep the first ICU stay in the tibble `icustays_tble`. (Hint: `slice_min` and `slice_max` may take long. Think alternative ways to achieve the same function.)
 
 ```{r}
-first_icu<-icustays_tble[,c(1,3)] %>%
+icustays_tble<-
+  icustays_tble %>%
+  arrange(intime) %>%
   group_by(subject_id) %>%
   slice_head(n=1) %>%
-  ungroup()
+  ungroup() %>%
   print(width=Inf)
-  
-# first_icu<-icustays_tble[,c(1,3,6)] %>%
+# first_icu<-icustays_tble%>%
 #   arrange(intime) %>%
 #   distinct() %>%
 #   print(width=Inf)
@@ -360,12 +361,12 @@ system(
     Hint: `labevents.csv.gz` is a data file too big to be read in by the `read_csv` function in its default setting. Utilize the `col_select` option in the `read_csv` function to reduce the memory burden. It took my computer 5-10 minutes to ingest this file. If your computer really has trouble importing `labevents.csv.gz`, you can import from the reduced data file `labevents_filtered_itemid.csv.gz`.
 
 ```{r}
-icustays_tble<-as_tibble(read_csv(str_c(mimic_path,"/icu/icustays.csv.gz")))
+icustays_tble0<-as_tibble(read_csv(str_c(mimic_path,"/icu/icustays.csv.gz")))
 labevents_tble0<-as_tibble(read_csv(str_c(mimic_path,"/hosp/labevents_filtered_itemid.csv.gz")),lazy=T,delim=',')
 ```
 ```{r}
 labevents_tble <-
-  semi_join(labevents_tble0,icustays_tble,by="subject_id") %>%
+  semi_join(labevents_tble0,icustays_tble0,by="subject_id") %>%
   filter(itemid %in% c(50912,50971,50983,50902,50882,51221,51301,50931)) %>% 
   print(Inf)
 ```
@@ -374,7 +375,7 @@ labevents_tble <-
 3. Further restrict `labevents_tble` to the first lab measurement during the ICU stay. 
 ```{r}
 labevents_tble1<-labevents_tble %>%
-  left_join(select(icustays_tble, subject_id, intime, outtime),by="subject_id") %>%
+  left_join(select(icustays_tble0, subject_id, intime, outtime),by="subject_id") %>%
   filter(intime<=charttime&charttime<=outtime) %>%
   group_by(subject_id,itemid) %>%
   arrange(charttime,by_group=T) %>%
@@ -522,6 +523,25 @@ Let us create a tibble `mimic_icu_cohort` for all ICU stays, where rows are the 
 - first vital measurements during ICU stay
 - an indicator variable `thirty_day_mort` whether the patient died within 30 days of hospital admission (30 day mortality)
 
+```{r}
+admissions_tble1<-semi_join(admissions_tble,icustays_tble,by=c('subject_id','hadm_id')) #keep only the first icu stay of each patient
+patients_tble1<-semi_join(patients_tble,icustays_tble,by='subject_id') #keep only the first icu stay of each patient
+
+#First combine all of 5 tables and then select age>18, then create the thirty_day_mort variables
+mimic_icu_cohort <-
+  left_join(icustays_tble,admissions_tble1,by="subject_id") %>% 
+  left_join(patients_tble,by="subject_id") %>%
+  left_join(labevents_tble1,by='subject_id') %>%
+  left_join(chartevents_tble1,by='subject_id') %>%
+  mutate(age=year(admittime)-anchor_year+anchor_age) %>%
+  filter(age>18) %>%
+  mutate(thirty_day_mort=if_else(is.na(deathtime),'No',                                                    if_else(as.Date(deathtime)-as.Date(admittime)<=30,"Yes","No")))  %>%
+  #Yes -> die No->alive
+  print(width=Inf)
+  
+```
+
+
 ## Q8. Exploratory data analysis (EDA)
 
 Summarize following information using appropriate numerics or graphs.
@@ -533,3 +553,30 @@ Summarize following information using appropriate numerics or graphs.
 - `thirty_day_mort` vs first vital measurements
 
 - `thirty_day_mort` vs first ICU unit
+
+```{r}
+#categorical data vs categorical data
+categ<-c('thirty_day_mort','gender','language','insurance','marital_status')
+op=par(mfrow=c(2,2))
+for(i in 2:5){
+  a<-table(mimic_icu_cohort[[categ[1]]],mimic_icu_cohort[[categ[i]]]) 
+  print(a)
+  barplot(a,cex.axis=1,cex.names=0.5,)
+}
+par=op
+```
+1. Gender: Gender has no association with the mortality rate during 30 days in ICU.
+2. Language:Most people (about 90%) speak English. Language has no association with the mortality rate during 30 days in ICU.
+3. Insurance: For people with medicare, the death rate is the highest during 30 days in ICU.
+4. Martial status: For people who married, the death rate is the highest during 30 days in ICU, and then is the widowed people. Single people tend to the lowest death rate.
+
+
+```{r}
+mimic_icu_cohort %>%
+  ggplot() +
+  geom_bar(mapping=aes(x=thirty_day_mort,fill=ethnicity),position = 'fill')+
+  labs(title='30 days mortality vs ethnicity')
+```
+5. Ethnicity: For Hispanic, Black people and White people, survival rate is larger than motility rate in the first 30 days in ICU. It is almost equivalent for Asian and other.
+
+
