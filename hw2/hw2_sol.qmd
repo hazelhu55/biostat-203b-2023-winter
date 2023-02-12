@@ -33,6 +33,7 @@ library(data.table)
 library(lubridate)
 library(R.utils)
 library(tidyverse)
+library(caret)
 ```
 
 MIMIC data location
@@ -546,14 +547,7 @@ mimic_icu_cohort <-
 
 Summarize following information using appropriate numerics or graphs.
 
-- `thirty_day_mort` vs demographic variables (ethnicity, language, insurance, marital_status, gender, age at hospital admission)
-
-- `thirty_day_mort` vs first lab measurements
-
-- `thirty_day_mort` vs first vital measurements
-
-- `thirty_day_mort` vs first ICU unit
-
+- `thirty_day_mort` vs demographic variables
 ```{r}
 #categorical data vs categorical data
 categ<-c('thirty_day_mort','gender','language','insurance','marital_status')
@@ -579,4 +573,92 @@ mimic_icu_cohort %>%
 ```
 5. Ethnicity: For Hispanic, Black people and White people, survival rate is larger than motility rate in the first 30 days in ICU. It is almost equivalent for Asian and other.
 
+
+- `thirty_day_mort` vs first lab measurements
+```{r}
+lab_measure<-
+  select(mimic_icu_cohort,c('bicarbonate','creatinine','potassium','sodium',
+                          'chloride','hematocrit',"n_wb_cell",'glucose',
+                          'thirty_day_mort')) %>%
+  pivot_longer(cols=bicarbonate:glucose) %>%
+  group_by(name) %>%
+  filter(value<quantile(value,0.975,na.rm=T) & 
+           value>quantile(value,0.025,na.rm=T)) %>%
+  ungroup()
+
+
+# Summary table
+lab_measure %>%
+  group_by(name,thirty_day_mort) %>%
+  summarise(
+    mean=mean(value),
+    min=min(value),
+    max=max(value),
+    median=median(value),
+    q25=quantile(value,0.25),
+    q75=quantile(value,0.75),
+    variance=var(value)
+  ) %>%
+  print(width=Inf)
+```
+
+```{r}
+#Summary plot
+ggplot(lab_measure) +
+geom_boxplot(aes(x=thirty_day_mort,y=value)) +
+facet_wrap(facets=vars(name),scales = 'free' )
+```
+From the graph, we could know that there might have no association between hematocrit and death rate during 30 days after admission of ICU. But for sodium and chloride and bicarbonate, we could observe that the mean and range of those people died during 30 days after admission of ICU are lower than those of people alive during 30 days. On the contrary, for potassium, number of white blood cell, glucose and creatinite, the mean and range of those people died during 30 days after admission of ICU are higher than those of people alive during 30 days.
+
+
+- `thirty_day_mort` vs first vital measurements
+```{r}
+vital_measure <-
+  select(mimic_icu_cohort,c('heart_rate','ni_blood_pressure',
+                            'sni_blood_pressure','body_temp',
+                            'respiratory_rate','thirty_day_mort')) %>%
+  pivot_longer(cols=heart_rate:respiratory_rate) %>%
+  group_by(name) %>%
+  filter(value<quantile(value,0.975,na.rm=T) & 
+           value>quantile(value,0.025,na.rm=T)) %>%
+  ungroup()
+
+
+# Summary table
+lab_measure %>%
+  group_by(name,thirty_day_mort) %>%
+  summarise(
+    mean=mean(value),
+    min=min(value),
+    max=max(value),
+    median=median(value),
+    q25=quantile(value,0.25),
+    q75=quantile(value,0.75),
+    variance=var(value)
+  ) %>%
+  print(width=Inf)
+
+```
+
+```{r}
+# Summary plot
+ggplot(vital_measure) +
+geom_boxplot(aes(x=thirty_day_mort,y=value)) +
+facet_wrap(facets=vars(name),scales = 'free' )
+```
+From the graph, for body temperature, mean non-invasive blood pressure and systolic non-invasive blood pressure, we could observe that the mean and range of those people died during 30 days after admission of ICU are lower than those of people alive during 30 days. On the contrary, for respiratory rate, and heart rate, the mean and range of those people died during 30 days after admission of ICU are higher than those of people alive during 30 days. Body temperate of patients is symmetric and seem to be normal distribution. Heart rate is right skewed.
+
+-`thirty_day_mort` vs first ICU unit
+```{r}
+#summary plot
+table(mimic_icu_cohort$thirty_day_mort,mimic_icu_cohort$first_careunit)
+```
+```{r}
+#barplot
+mimic_icu_cohort %>%
+  select(thirty_day_mort,first_careunit) %>%
+  ggplot() +
+    geom_bar(mapping = aes(thirty_day_mort,fill=first_careunit))
+```
+For patients alive during 30 thirty days in ICU, they tend to be accepted CVICU, MICU/SICU ad MICU for the first care. For patients dead during 30 thirty days in ICU, their most often first care is MICU, MICU/SICU and then SICU.
 
