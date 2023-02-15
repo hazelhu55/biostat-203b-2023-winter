@@ -94,7 +94,7 @@ done
 Display the number of lines in each data file using a similar loop.
 ```{bash}
 for datafile in ~/mimic/core/*.gz;
-  do wc -l < $datafile;
+  do gzcat $datafile | wc -l ;
 done
 ```
 
@@ -114,7 +114,11 @@ gzcat ~/mimic/core/admissions.csv.gz | wc -l
 There are 523741 rows in this datafile.
 
 ```{bash}
+<<<<<<< HEAD
 gzcat ~/mimic/core/admissions.csv.gz | awk 'BEGIN {FS = ","};{if (NR>1) {print $1}}' | sort | uniq |wc -l
+=======
+gzcat ~/mimic/core/admissions.csv.gz | awk 'BEGIN {FS = ","}; {{if (NR>1)print $1}}' | sort | uniq |wc -l
+>>>>>>> develop
 ```
 There are 256878 unique patients in the datafile.
 
