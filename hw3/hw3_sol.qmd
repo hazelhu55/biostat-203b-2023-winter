@@ -32,6 +32,7 @@ library(dbplyr)
 library(DBI)
 library(lubridate)
 library(tidyverse)
+library(readr)
 ```
 
 I found the current versions of bigrquery (v1.4.1) and dbplyr (v2.3.0) don't work well together on my computer ([Issue](https://github.com/r-dbi/bigrquery/issues/509)). If you encounter similar issues, you can install older versions of the these two packages.
@@ -149,7 +150,7 @@ labevents_tble <- labevents_tble %>%
 ```{r}
 chartevents_tble <- 
   tbl(con,"chartevents") %>%
-  filter(itemid %in% c(220045,220181,220179,223761,220210)) %>%
+  filter(itemid %in% c(220045, 220181, 220179, 223761, 220210)) %>%
   semi_join(icustays_tble,by="subject_id") %>%
   print(width=Inf)
 ```
@@ -171,7 +172,9 @@ chartevents_tble <- chartevents_tble %>%
   #pivot chart events to become variables
   select(subject_id,itemid,valuenum) %>%
   pivot_wider(names_from = itemid, values_from = valuenum) %>%
-  rename('heart_rate'='220045','ni_blood_pressure'='220181','sni_blood_pressure'='220179','body_temp'='223761','respiratory_rate'='220210') %>%
+  rename('heart_rate'='220045','ni_blood_pressure'='220181',
+         'sni_blood_pressure'='220179','body_temp'='223761',
+         'respiratory_rate'='220210') %>%
   print(width=Inf)
 ```
 
@@ -204,7 +207,7 @@ icu_cohort <- icustays_tble %>%
   print(width=Inf)
 
 #save icu_cohort table into rds file
-saveRDS(icu_cohort,file = "./mimiciv_shiny/icu_cohort.rds")
+write_rds(icu_cohort,file = "./mimiciv_shiny/icu_cohort.rds")
 ```
 
 Close database connection and clear workspace.
@@ -216,3 +219,4 @@ rm(list = ls())
 ## Q2. Shiny app
 
 Develop a Shiny app for exploring the ICU cohort data created in Q1. The app should reside in the `mimiciv_shiny` folder. The app should provide easy access to the graphical and numerical summaries of variables (demographics, lab measurements, vitals) in the ICU cohort.
+
