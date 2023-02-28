@@ -204,7 +204,7 @@ icu_cohort <- icustays_tble %>%
   print(width = Inf)
 
 #save icu_cohort table into rds file
-write_rds(icu_cohort, file = "./mimiciv_shiny/icu_cohort.rds")
+write_rds(as_tibble(icu_cohort), file = "./mimiciv_shiny/icu_cohort.rds")
 ```
 
 Close database connection and clear workspace.
