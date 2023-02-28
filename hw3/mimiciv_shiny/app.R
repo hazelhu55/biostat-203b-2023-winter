@@ -19,7 +19,8 @@ bq_auth(
              "https://www.googleapis.com/auth/cloud-platform")
 )
 
-setwd("/Users/huxuyi/BIOSTAT/2022-2023/BIOSTAT203B/2023-hw/hw3/mimiciv_shiny")
+#remember to set windows
+setwd("~/BIOSTAT/2022-2023/BIOSTAT203B/2023-hw/hw3/mimiciv_shiny")
 icu_cohort<-read_rds("icu_cohort.rds")
 
 x0 <- list(
@@ -45,9 +46,9 @@ x0 <- list(
 
 #Filter some outliers for the numeric data to make plots readable.
 df_lab <- icu_cohort %>%
-  select(c("bicarbonate", "creatinine", 'sodium','chloride',
-            'hematocrit', "n_wb_cell", "thirty_day_mort"))   %>%
-  pivot_longer(cols = bicarbonate:n_wb_cell )  %>%
+  select(c("bicarbonate", "creatinine", 'sodium', 'chloride',
+            'hematocrit', "potassium", "n_wb_cell", "thirty_day_mort"))   %>%
+  pivot_longer(cols = bicarbonate : n_wb_cell )  %>%
   group_by(name) %>%
   mutate(percentr = percent_rank(value)) %>%
   filter(percentr < 0.975 & percentr > 0.025) %>%
@@ -80,7 +81,7 @@ ui <- fluidPage(
                       label=strong("Variables"),
                       choices=x0),
           helpText("ICU Cohort Data VS. Thirty Day Mortality Rate")
-      ),
+          ),
     
         # Show a plot of the generated distribution
         mainPanel( shinycssloaders::withSpinner(plotOutput("Plot")))
@@ -88,16 +89,16 @@ ui <- fluidPage(
     ),
     
     tabPanel("Summary Table",
-        sidebarLayout(
-          sidebarPanel(
-            #select a variable to show the summary plot
-            selectInput(inputId="measure",
-                        label=strong("Choose a Table:"),
-                        choices=c("Demographic Factors",
-                                  "Lab Measurements",
-                                  "Vital Measurements"))),
+      sidebarLayout(
+        sidebarPanel(
+          #select a variable to show the summary plot
+          selectInput(inputId="measure",
+                      label=strong("Choose a Table:"),
+                      choices=c("Demographic Factors",
+                                "Lab Measurements",
+                                "Vital Measurements"))),
           mainPanel(shinycssloaders::withSpinner(verbatimTextOutput("Summary")))
-        )
+      )
     )
   )
 )
@@ -107,18 +108,18 @@ ui <- fluidPage(
 # Define server logic required to draw plots and tables
 server <- function(input, output) {
   
-   output$Plot <- renderPlot({
+  output$Plot <- renderPlot({
      
-     x_target <- input$variable
-     #Demographical data
-     if(x_target %in% x0[2:6]){
-       value <- unlist(unname(x_target))
-        as_tibble(select(icu_cohort,'thirty_day_mort',value)) %>%
-          group_by(thirty_day_mort,!!sym(value)) %>%
-          summarise(count=n()) %>%
+    x_target <- input$variable
+      #Demographical data
+      if(x_target %in% x0[2:6]){
+        value <- unlist(unname(x_target))
+        as_tibble(select(icu_cohort, 'thirty_day_mort', value)) %>%
+          group_by(thirty_day_mort, !!sym(value)) %>%
+          summarise(count = n()) %>%
           ungroup %>%
-          ggplot(mapping=aes(x=thirty_day_mort,y=count)) +
-          geom_col(aes(fill=!!sym(value))) +
+          ggplot(mapping = aes(x = thirty_day_mort,y = count)) +
+          geom_col(aes(fill = !!sym(value))) +
           xlab("Thirty Day Mortality") + 
           ylab("Count")
      }
@@ -126,23 +127,23 @@ server <- function(input, output) {
      #lab measurements
      else if(x_target %in% x0[7:13]){
        df_lab %>%
-       filter(name==x_target) %>%
+       filter(name == x_target) %>%
        ggplot() +
-         geom_boxplot(mapping=aes(x=thirty_day_mort, 
-                                  y=value))
+         geom_boxplot(mapping = aes(x = thirty_day_mort, 
+                                    y = value))
      }
      #vital measurements
      else if(x_target %in% x0[14:19]){
        df_vital %>%
-         filter(name==x_target) %>%
+         filter(name == x_target) %>%
          ggplot() +
-         geom_boxplot(mapping=aes(x=thirty_day_mort, 
-                                  y=value))
+         geom_boxplot(mapping = aes(x = thirty_day_mort, 
+                                    y = value))
      }
      else{
        select(icu_cohort, 'thirty_day_mort') %>%
          ggplot() +
-         geom_bar(mapping=aes(x=thirty_day_mort))
+         geom_bar(mapping = aes(x=thirty_day_mort))
      }
   })
    
@@ -151,10 +152,10 @@ server <- function(input, output) {
      #Print table for demographic Factors, run very slowly >-<
      icu_cohort1 <- as_tibble(icu_cohort)
      if(input$measure == "Demographic Factors"){
-       categ<-c('thirty_day_mort','gender','language','insurance',
-                'marital_status','ethnicity')
+       categ<-c('thirty_day_mort', 'gender', 'language', 'insurance',
+                'marital_status', 'ethnicity')
         for(i in 2:6){
-          a<-table(icu_cohort1[[categ[1]]],icu_cohort1[[categ[i]]])
+          a<-table(icu_cohort1[[categ[1]]], icu_cohort1[[categ[i]]])
           print(a)
         }
      }
@@ -165,17 +166,17 @@ server <- function(input, output) {
          group_by(thirty_day_mort,name) %>%
          summarise(
            mean=mean(value, na.rm=TRUE),
-           min=min(value,na.rm = TRUE),
-           max=max(value,na.rm = TRUE),
-           median=median(value,na.rm = TRUE),
+           min=min(value, na.rm = TRUE),
+           max=max(value, na.rm = TRUE),
+           median=median(value, na.rm = TRUE),
            variance=var(value)
          ) %>%
-         print(n = 12, width = Inf)
+         print(n = 14, width = Inf)
      }
      #Print table for vital measurements, run very slowly >-<
      else{
        as_tibble(df_vital) %>%
-         group_by(thirty_day_mort,name) %>%
+         group_by(thirty_day_mort, name) %>%
          summarise(
            mean=mean(value, na.rm=TRUE),
            min=min(value, na.rm=TRUE),
