@@ -140,9 +140,9 @@ labevents_tble <- labevents_tble %>%
   
   #pivot lab items to become variables/columns
   pivot_wider(names_from = itemid, values_from = valuenum) %>%
-  rename('bicarbonate'='50882','creatinine'='50912','potassium'='50971',
-          'sodium'='50983','chloride'='50902','hematocrit'='51221','n_wb_cell'='51301',
-          'glucose'='50931') %>%
+  rename('bicarbonate'='50882', 'creatinine'='50912', 'potassium'='50971',
+          'sodium'='50983', 'chloride'='50902', 'hematocrit'='51221',
+         'n_wb_cell'='51301', 'glucose'='50931') %>%
   print(width=Inf)
 ```
 
