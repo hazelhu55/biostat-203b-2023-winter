@@ -19,30 +19,28 @@ bq_auth(
              "https://www.googleapis.com/auth/cloud-platform")
 )
 
-#remember to set windows
-setwd("~/BIOSTAT/2022-2023/BIOSTAT203B/2023-hw/hw3/mimiciv_shiny")
-icu_cohort<-read_rds("icu_cohort.rds")
+icu_cohort <- read_rds("icu_cohort.rds")
 
 x0 <- list(
-  "Thirty Day Mortality"="thirty_day_mort",
-  "Gender"="gender",
-  "Insurance"="insurance",
-  "Language"="language",
-  "Marital Status"="marital_status",
-  "Ethnicity"="ethnicity",
-  "Bicarbonate"="bicarbonate",
-  "Creatinine"="creatinine",
-  'Potassium'='potassium',
-  'Sodium'='sodium',
-  'Chloride'='chloride',
-  'Hematocrit'='hematocrit',
-  'Number of White Bood Cell'="n_wb_cell",
-  'Glucose'='glucose',
-  'Heart Rate'='heart_rate',
-  "Mean Non-invasive Blood Pressure"='ni_blood_pressure',
-  "Non-invasive Blood Pressure"='sni_blood_pressure',
-  "Body Temperature in Fahrenheit"='body_temp',
-  "Respiratory Rate"='respiratory_rate')
+  "Thirty Day Mortality" = "thirty_day_mort",
+  "Gender" = "gender",
+  "Insurance" = "insurance",
+  "Language" = "language",
+  "Marital Status" = "marital_status",
+  "Ethnicity" = "ethnicity",
+  "Bicarbonate" = "bicarbonate",
+  "Creatinine" = "creatinine",
+  'Potassium' = 'potassium',
+  'Sodium' = 'sodium',
+  'Chloride' = 'chloride',
+  'Hematocrit' = 'hematocrit',
+  'Number of White Bood Cell' = "n_wb_cell",
+  'Glucose' = 'glucose',
+  'Heart Rate' = 'heart_rate',
+  "Mean Non-invasive Blood Pressure" = 'ni_blood_pressure',
+  "Non-invasive Blood Pressure" = 'sni_blood_pressure',
+  "Body Temperature in Fahrenheit" = 'body_temp',
+  "Respiratory Rate" = 'respiratory_rate')
 
 #Filter some outliers for the numeric data to make plots readable.
 df_lab <- icu_cohort %>%
@@ -77,9 +75,9 @@ ui <- fluidPage(
       sidebarLayout(
         sidebarPanel(
           #select a variable to plot or show
-          selectInput(inputId="variable",
-                      label=strong("Variables"),
-                      choices=x0),
+          selectInput(inputId = "variable",
+                      label = strong("Variables"),
+                      choices = x0),
           helpText("ICU Cohort Data VS. Thirty Day Mortality Rate")
           ),
     
@@ -92,9 +90,9 @@ ui <- fluidPage(
       sidebarLayout(
         sidebarPanel(
           #select a variable to show the summary plot
-          selectInput(inputId="measure",
-                      label=strong("Choose a Table:"),
-                      choices=c("Demographic Factors",
+          selectInput(inputId = "measure",
+                      label = strong("Choose a Table:"),
+                      choices = c("Demographic Factors",
                                 "Lab Measurements",
                                 "Vital Measurements"))),
           mainPanel(shinycssloaders::withSpinner(verbatimTextOutput("Summary")))
@@ -112,7 +110,7 @@ server <- function(input, output) {
      
     x_target <- input$variable
       #Demographical data
-      if(x_target %in% x0[2:6]){
+      if (x_target %in% x0[2:6]) {
         value <- unlist(unname(x_target))
         as_tibble(select(icu_cohort, 'thirty_day_mort', value)) %>%
           group_by(thirty_day_mort, !!sym(value)) %>%
@@ -125,7 +123,7 @@ server <- function(input, output) {
      }
      
      #lab measurements
-     else if(x_target %in% x0[7:13]){
+     else if (x_target %in% x0[7:13]) {
        df_lab %>%
        filter(name == x_target) %>%
        ggplot() +
@@ -133,7 +131,7 @@ server <- function(input, output) {
                                     y = value))
      }
      #vital measurements
-     else if(x_target %in% x0[14:19]){
+     else if (x_target %in% x0[14:19]) {
        df_vital %>%
          filter(name == x_target) %>%
          ggplot() +
@@ -143,7 +141,7 @@ server <- function(input, output) {
      else{
        select(icu_cohort, 'thirty_day_mort') %>%
          ggplot() +
-         geom_bar(mapping = aes(x=thirty_day_mort))
+         geom_bar(mapping = aes(x = thirty_day_mort))
      }
   })
    
@@ -151,38 +149,38 @@ server <- function(input, output) {
      
      #Print table for demographic Factors, run very slowly >-<
      icu_cohort1 <- as_tibble(icu_cohort)
-     if(input$measure == "Demographic Factors"){
+     if (input$measure == "Demographic Factors") {
        categ<-c('thirty_day_mort', 'gender', 'language', 'insurance',
                 'marital_status', 'ethnicity')
-        for(i in 2:6){
-          a<-table(icu_cohort1[[categ[1]]], icu_cohort1[[categ[i]]])
+        for (i in 2:6) {
+          a <- table(icu_cohort1[[categ[1]]], icu_cohort1[[categ[i]]])
           print(a)
         }
      }
      
      #Print table for lab measurements, run very slowly >-<
-     else if(input$measure == "Lab Measurements"){
+     else if (input$measure == "Lab Measurements") {
        as_tibble(df_lab) %>%
-         group_by(thirty_day_mort,name) %>%
+         group_by(thirty_day_mort, name) %>%
          summarise(
-           mean=mean(value, na.rm=TRUE),
-           min=min(value, na.rm = TRUE),
-           max=max(value, na.rm = TRUE),
-           median=median(value, na.rm = TRUE),
-           variance=var(value)
+           mean = mean(value, na.rm = TRUE),
+           min = min(value, na.rm = TRUE),
+           max = max(value, na.rm = TRUE),
+           median = median(value, na.rm = TRUE),
+           variance = var(value)
          ) %>%
          print(n = 14, width = Inf)
      }
      #Print table for vital measurements, run very slowly >-<
-     else{
+     else {
        as_tibble(df_vital) %>%
          group_by(thirty_day_mort, name) %>%
          summarise(
-           mean=mean(value, na.rm=TRUE),
-           min=min(value, na.rm=TRUE),
-           max=max(value, na.rm=TRUE),
-           median=median(value, na.rm=TRUE),
-           variance=var(value)
+           mean = mean(value, na.rm = TRUE),
+           min = min(value, na.rm = TRUE),
+           max = max(value, na.rm = TRUE),
+           median = median(value, na.rm = TRUE),
+           variance = var(value)
          ) %>%
          print(n = 10, width = Inf)
      }
