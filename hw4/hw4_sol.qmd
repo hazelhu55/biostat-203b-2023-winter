@@ -1,0 +1,475 @@
+---
+title: "Biostat 203B Homework 4"
+subtitle: Due Mar 24 @ 11:59PM
+author: Hazel Hu and 005946282
+format:
+  html:
+    theme: cosmo
+    embed-resources: true
+    number-sections: true
+    toc: true
+    toc-depth: 4
+    toc-location: left
+    code-fold: false
+knitr:
+  opts_chunk: 
+    cache: false    
+    echo: true
+    fig.align: 'center'
+    fig.width: 6
+    fig.height: 4
+    message: FALSE
+---
+
+Display machine information:
+
+```{r}
+#| eval: false
+#| 
+sessionInfo()
+```
+
+Load database libraries and the tidyverse frontend:
+
+```{r}
+#| eval: false
+
+suppressPackageStartupMessages(library(tidyverse))
+suppressPackageStartupMessages(library(tidymodels))
+suppressPackageStartupMessages(library(lubridate))
+```
+
+## Predicting 30-day mortality
+
+Using the ICU cohort `icu_cohort.rds` you built in Homework 3, develop at least three analytic approaches for predicting the 30-day mortality of patients admitted to ICU using demographic information (gender, age, marital status, ethnicity), first lab measurements during ICU stay, and first vital measurements during ICU stay. For example, you can use (1) logistic regression with elastic net (lasso + ridge) penalty (e.g., glmnet or keras package), (2) random forest, (3) boosting, and (4) support vector machines, or (5) MLP neural network (keras package)
+
+```{r}
+# Load libraries
+library(readr)
+library(GGally)
+library(gtsummary)
+library(ranger)
+library(tidyverse)
+library(tidymodels)
+library(xgboost)
+library(glmnet)
+```
+
+```{r}
+# Load the `icu_cohort.rds` data.
+icu_cohort <- read_rds("../hw3/mimiciv_shiny/icu_cohort.rds") %>%
+  select(c("bicarbonate", "creatinine", "sodium", "chloride",
+           "hematocrit", "potassium", "n_wb_cell","respiratory_rate", 
+           "glucose", "heart_rate", "ni_blood_pressure", 
+           "sni_blood_pressure","body_temp","gender", "age", "marital_status",                "ethnicity","thirty_day_mort")) %>%
+  print(width = Inf)
+```
+
+Numerical summaries stratified by the outcome `thirty_day_mort`
+
+```{r}
+icu_cohort %>%
+  tbl_summary(by = thirty_day_mort)
+```
+
+Missing value
+
+```{r}
+#missing value
+colSums(is.na(icu_cohort))
+```
+
+1.  Partition data into 50% training set and 50% test set. Stratify partitioning according the 30-day mortality status.
+
+```{r}
+# For reproducibility
+set.seed(1)
+
+data_split <- initial_split(
+  icu_cohort, 
+  # stratify by thirty_day_mort
+  strata = "thirty_day_mort", 
+  prop = 0.5
+  )
+data_split
+```
+
+```{r}
+#Show the dimension of training data
+ic_training <- training(data_split)
+dim(ic_training )
+```
+
+```{r}
+#Show the dimension of testing data
+ic_testing <- testing(data_split)
+dim(ic_testing)
+```
+
+2.  Train and tune the models using the training set.
+
+### Random Forest Model
+
+Recipe for random forest:
+
+```{r}
+rf_recipe <- 
+  recipe(
+    thirty_day_mort ~ ., 
+    data = ic_training
+  ) %>%
+  # Imputation for the missing value
+  # mode imputation for martial_status
+  step_impute_mode(marital_status) %>%
+  # mean imputation for potassium
+  step_impute_mean(potassium) %>%
+  # mean imputation for  sodium
+  step_impute_mean(sodium) %>%
+  # mean imputation for discharge_location
+  step_impute_mean(glucose) %>%
+  # mean imputation for creatinine
+  step_impute_mean(creatinine) %>%
+  # mean imputation for hematocrit
+  step_impute_mean(hematocrit) %>%
+  # mean imputation for bicarbonate
+  step_impute_mean(bicarbonate) %>%
+  # mean imputation for n_wb_cell
+  step_impute_mean(n_wb_cell) %>%
+  # mean imputation for chloride
+  step_impute_mean(chloride) %>%
+  # mean imputation for body_temp
+  step_impute_mean(body_temp) %>%
+  # mean imputation sni_blood_pressure
+  step_impute_mean(sni_blood_pressure) %>%
+  # mean imputation ni_blood_pressure
+  step_impute_mean(ni_blood_pressure) %>%
+  # mean imputation respiratory_rate
+  step_impute_mean(respiratory_rate) %>%
+  # mean imputation heart_rate
+  step_impute_mean(heart_rate) %>%
+  # zero-variance filter
+  step_zv(all_numeric_predictors()) %>% 
+  # estimate the means and standard deviations
+  prep(training = ic_training, retain = TRUE)
+rf_recipe
+```
+
+Model1 - random forest:
+
+```{r}
+rf_mod <- 
+  rand_forest(
+    mode = "classification",
+    # Number of predictors randomly sampled in each split
+    mtry = tune(),
+    # Number of trees in ensemble
+    trees = tune()
+  ) %>% 
+  set_engine("ranger")
+rf_mod
+```
+
+Work flow:
+
+```{r}
+rf_wf <- workflow() %>%
+  add_recipe(rf_recipe) %>%
+  add_model(rf_mod)
+rf_wf
+```
+
+Tuning Grid:
+
+```{r}
+param_grid_rf <- grid_regular(
+  trees(range = c(100L, 300L)), 
+  mtry(range = c(1L, 5L)),
+  levels = c(3, 5)
+  )
+param_grid_rf
+```
+
+Cross Validation:
+
+```{r}
+set.seed(203)
+folds <- vfold_cv(ic_training, v = 5)
+```
+
+```{r}
+rf_fit <- rf_wf %>%
+  tune_grid(
+    resamples = folds,
+    grid = param_grid_rf,
+    metrics = metric_set(roc_auc, accuracy)
+    )
+```
+
+Visualize CV results:
+
+```{r}
+rf_fit %>%
+  collect_metrics() %>%
+  print(width = Inf) %>%
+  filter(.metric == "roc_auc") %>%
+  ggplot(mapping = aes(x = trees, y = mean, color = mtry)) +
+  geom_point() + 
+  # geom_line() + 
+  labs(x = "Num. of Trees", y = "CV AUC")
+```
+
+```{r}
+rf_fit %>%
+  show_best("roc_auc")
+```
+
+```{r}
+best_rf <- rf_fit %>%
+  select_best("roc_auc")
+best_rf
+```
+
+```{r}
+# Final workflow
+final_wf_rf <- rf_wf %>%
+  finalize_workflow(best_rf)
+final_wf_rf
+```
+
+```{r}
+# Fit the whole training set, then predict the test cases
+final_fit_rf <- 
+  final_wf_rf %>%
+  last_fit(data_split)
+final_fit_rf
+```
+
+```{r}
+# Test metrics
+final_fit_rf %>% 
+  collect_metrics()
+```
+
+### Logistic Regression Model
+
+```{r}
+logit_recipe <- 
+  recipe(
+    thirty_day_mort ~ ., 
+    data = ic_training
+  ) %>%
+  # Imputation for the missing value
+  # mode imputation for martial_status
+  step_impute_mode(marital_status) %>%
+  # mean imputation for potassium
+  step_impute_mean(potassium) %>%
+  # mean imputation for  sodium
+  step_impute_mean(sodium) %>%
+  # mean imputation for discharge_location
+  step_impute_mean(glucose) %>%
+  # mean imputation for creatinine
+  step_impute_mean(creatinine) %>%
+  # mean imputation for hematocrit
+  step_impute_mean(hematocrit) %>%
+  # mean imputation for bicarbonate
+  step_impute_mean(bicarbonate) %>%
+  # mean imputation for n_wb_cell
+  step_impute_mean(n_wb_cell) %>%
+  # mean imputation for chloride
+  step_impute_mean(chloride) %>%
+  # mean imputation for body_temp
+  step_impute_mean(body_temp) %>%
+  # mean imputation sni_blood_pressure
+  step_impute_mean(sni_blood_pressure) %>%
+  # mean imputation ni_blood_pressure
+  step_impute_mean(ni_blood_pressure) %>%
+  # mean imputation respiratory_rate
+  step_impute_mean(respiratory_rate) %>%
+  # mean imputation heart_rate
+  step_impute_mean(heart_rate) %>%
+  # zero-variance filter
+  step_zv(all_numeric_predictors()) %>% 
+  # create traditional dummy variables
+  step_dummy(all_nominal_predictors()) %>%
+  # center and scale numeric data
+  step_normalize(all_numeric_predictors()) %>%
+  # estimate the means and standard deviations
+  prep(training = ic_training, retain = TRUE)
+rf_recipe
+```
+
+```{r}
+logit_mod <- 
+  logistic_reg(
+    penalty = tune(), 
+    mixture = tune()
+  ) %>% 
+  set_engine("glmnet", standardize = FALSE)
+logit_mod
+```
+
+```{r}
+logit_wf <- workflow() %>%
+  add_recipe(logit_recipe) %>%
+  add_model(logit_mod)
+logit_wf
+```
+
+```{r}
+param_grid_logit <- grid_regular(
+  penalty(range = c(-4, -1)), 
+  mixture(), #proportion of Lasso Penalty
+  levels = c(100, 10)
+  )
+param_grid_logit
+```
+
+```{r}
+logit_fit <- logit_wf %>%
+  tune_grid(
+    resamples = folds,
+    grid = param_grid_logit,
+    metrics = metric_set(roc_auc, accuracy)
+    )
+```
+
+```{r}
+logit_fit
+```
+
+```{r}
+logit_fit %>%
+  collect_metrics() %>%
+  print(width = Inf) %>%
+  filter(.metric == "roc_auc") %>%
+  ggplot(mapping = aes(x = penalty, y = mean, color = mixture)) +
+  geom_point() +
+  labs(x = "Penalty", y = "CV AUC") +
+  scale_x_log10()
+```
+
+```{r}
+logit_fit %>%
+  show_best("roc_auc")
+```
+
+```{r}
+best_logit <- logit_fit %>%
+  select_best("roc_auc")
+best_logit
+```
+
+```{r}
+# Final workflow
+final_wf_logit <- logit_wf %>%
+  finalize_workflow(best_logit)
+final_wf_logit
+```
+
+```{r}
+# Fit the whole training set, then predict the test cases
+final_fit_logit <- 
+  final_wf_logit %>%
+  last_fit(data_split)
+final_fit_logit
+```
+
+```{r}
+# Test metrics for logit regression
+final_fit_logit %>% 
+  collect_metrics()
+```
+
+### XGBoost Model
+
+```{r}
+gb_recipe <- logit_recipe
+gb_mod <- 
+  boost_tree(
+    mode = "classification",
+    trees = 1000, 
+    tree_depth = tune(),
+    learn_rate = tune()
+  ) %>% 
+  set_engine("xgboost")
+gb_mod
+```
+
+```{r}
+gb_wf <- workflow() %>%
+  add_recipe(gb_recipe) %>%
+  add_model(gb_mod)
+gb_wf
+```
+
+```{r}
+param_grid_gb <- grid_regular(
+  tree_depth(range = c(1L, 3L)),
+  learn_rate(range = c(-5, 2), trans = log10_trans()),
+  levels = c(3, 10)
+  )
+param_grid_gb
+```
+
+```{r}
+gb_fit <- gb_wf %>%
+  tune_grid(
+    resamples = folds,
+    grid = param_grid_gb,
+    metrics = metric_set(roc_auc, accuracy)
+    )
+gb_fit
+```
+
+```{r}
+gb_fit %>%
+  collect_metrics() %>%
+  print(width = Inf) %>%
+  filter(.metric == "roc_auc") %>%
+  ggplot(mapping = aes(x = learn_rate, y = mean, color = tree_depth)) +
+  geom_point() +
+  labs(x = "Learning Rate", y = "CV AUC") +
+  scale_x_log10()
+```
+
+```{r}
+gb_fit %>%
+  show_best("roc_auc")
+```
+
+```{r}
+best_gb <- gb_fit %>%
+  select_best("roc_auc")
+best_gb
+```
+
+```{r}
+# Final workflow
+final_wf_gb <- gb_wf %>%
+  finalize_workflow(best_gb)
+final_wf_gb
+```
+
+```{r}
+# Fit the whole training set, then predict the test cases
+final_fit_gb <- 
+  final_wf_gb %>%
+  last_fit(data_split)
+final_fit_gb
+```
+
+```{r}
+# Test metrics
+final_fit_gb %>% 
+  collect_metrics()
+```
+
+3.  Compare model classification performance on the test set. Report both the area under ROC curve and accuracy for each model.
+
+|        Model        |  AUC  | Accuracy |
+|:-------------------:|:-----:|:--------:|
+|    Random Forest    | 0.815 |  0.907   |
+| Logistic Regression | 0.761 |  0.905   |
+|       XGBoost       | 0.822 |  0.912   |
+
+XGBoost has the best performance on AUC score and accuracy.
