@@ -10,14 +10,14 @@ library(bigrquery)
 library(eply)
 library(jsonlite)
 
-satoken <- "~/mimic/biostat-203b-2023winter-3fdc2392ac39.json"
+#satoken <- "~/mimic/biostat-203b-2023winter-3fdc2392ac39.json"
 # BigQuery authentication using service account
-bq_auth(
-  path = satoken,
-  email = "mimiciv-bigquery@biostat-203b-2023winter.iam.gserviceaccount.com",
-  scopes = c("https://www.googleapis.com/auth/bigquery",
-             "https://www.googleapis.com/auth/cloud-platform")
-)
+#bq_auth(
+# path = satoken,
+# email = "mimiciv-bigquery@biostat-203b-2023winter.iam.gserviceaccount.com",
+# scopes = c("https://www.googleapis.com/auth/bigquery",
+#            "https://www.googleapis.com/auth/cloud-platform")
+#)
 
 icu_cohort <- read_rds("icu_cohort.rds")
 
